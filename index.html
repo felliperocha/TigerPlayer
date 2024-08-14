@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reprodutor de Vídeo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+        }
+        header {
+            background: #333;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            margin: 0;
+            color: #e0e0e0;
+        }
+        #select-folder {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #1a73e8;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #select-folder:hover {
+            background-color: #155ab6;
+        }
+        #breadcrumb {
+            background: #444;
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+        }
+        #breadcrumb span {
+            color: #ddd;
+        }
+        #breadcrumb a {
+            color: #1a73e8;
+            text-decoration: none;
+        }
+        #breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        #video-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 10px;
+        }
+        #video-list li {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            padding: 5px;
+            background: #333;
+            border-radius: 5px;
+        }
+        #video-list li:hover {
+            background: #444;
+        }
+        #video-list a {
+            text-decoration: none;
+            color: #1a73e8;
+            flex-grow: 1;
+            margin-left: 10px;
+        }
+        #video-list a:hover {
+            text-decoration: underline;
+        }
+        .icon {
+            width: 24px;
+            height: 24px;
+        }
+        #video-player {
+            margin: 20px auto;
+            width: calc(100% - 40px);
+            max-width: 800px;
+            background: #333;
+            border-radius: 5px;
+            overflow: hidden;
+            padding: 10px;
+        }
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Reprodutor de Vídeo</h1>
+    </header>
+    <button id="select-folder">Selecionar Pasta</button>
+    <div id="breadcrumb"></div>
+    <ul id="video-list"></ul>
+    <div id="video-player">
+        <video id="video" controls></video>
+    </div>
+
+    <script>
+        const selectFolderButton = document.getElementById('select-folder');
+        const videoList = document.getElementById('video-list');
+        const breadcrumb = document.getElementById('breadcrumb');
+        const video = document.getElementById('video');
+
+        let currentPath = [];
+        let rootDir;
+
+        selectFolderButton.addEventListener('click', async () => {
+            rootDir = await window.showDirectoryPicker();
+            currentPath = [rootDir];
+            renderFolderContent(rootDir);
+            updateBreadcrumb();
+        });
+
+        async function renderFolderContent(directoryHandle) {
+            videoList.innerHTML = '';
+
+            for await (const [name, handle] of directoryHandle) {
+                const listItem = document.createElement('li');
+                const icon = document.createElement('img');
+                icon.classList.add('icon');
+
+                if (handle.kind === 'file' && handle.name.endsWith('.mp4')) {  // Filtra apenas arquivos de vídeo
+                    icon.src = 'https://img.icons8.com/ios-filled/50/1a73e8/video-file.png';
+                    const link = document.createElement('a');
+                    link.textContent = name;
+                    link.href = '#';
+                    link.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        const file = await handle.getFile();
+                        playVideo(file);
+                    });
+                    listItem.appendChild(icon);
+                    listItem.appendChild(link);
+                } else if (handle.kind === 'directory') {
+                    icon.src = 'https://img.icons8.com/ios-filled/50/1a73e8/folder-invoices.png';
+                    listItem.textContent = name;
+                    listItem.insertBefore(icon, listItem.firstChild);
+                    listItem.style.fontWeight = 'bold';
+                    listItem.addEventListener('click', async () => {
+                        currentPath.push(handle);
+                        renderFolderContent(handle);
+                        updateBreadcrumb();
+                    });
+                }
+
+                videoList.appendChild(listItem);
+            }
+        }
+
+        function playVideo(file) {
+            video.src = URL.createObjectURL(file);
+            video.load();
+            video.play();
+        }
+
+        function updateBreadcrumb() {
+            breadcrumb.innerHTML = '';
+            currentPath.forEach((handle, index) => {
+                if (index > 0) breadcrumb.appendChild(document.createTextNode(' / '));
+                const link = document.createElement('a');
+                link.textContent = handle.name || 'Início';
+                link.href = '#';
+                link.addEventListener('click', async () => {
+                    currentPath = currentPath.slice(0, index + 1);
+                    renderFolderContent(currentPath[currentPath.length - 1]);
+                    updateBreadcrumb();
+                });
+                breadcrumb.appendChild(link);
+            });
+        }
+    </script>
+</body>
+</html>
